@@ -180,8 +180,6 @@ export class StreamMessageController {
         this.fromStreamerMessages.set(0, 'QualityControlOwnership');
         this.fromStreamerMessages.set(1, 'Response');
         this.fromStreamerMessages.set(2, 'Command');
-        this.fromStreamerMessages.set(3, 'FreezeFrame');
-        this.fromStreamerMessages.set(4, 'UnfreezeFrame');
         this.fromStreamerMessages.set(5, 'VideoEncoderAvgQP');
         this.fromStreamerMessages.set(6, 'LatencyTest');
         this.fromStreamerMessages.set(7, 'InitialSettings');

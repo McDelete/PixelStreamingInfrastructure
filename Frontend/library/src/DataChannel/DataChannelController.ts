@@ -10,7 +10,6 @@ export class DataChannelController {
     peerConnection: RTCPeerConnection;
     datachannelOptions: RTCDataChannelInit;
     label: string;
-    isReceivingFreezeFrame = false;
 
     /**
      * return the current state of a datachannel controller instance

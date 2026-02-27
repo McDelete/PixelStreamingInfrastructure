@@ -11,7 +11,6 @@ import {
     KeepaliveMonitor
 } from '@epicgames-ps/lib-pixelstreamingcommon-ue5.7';
 import { StreamController } from '../VideoPlayer/StreamController';
-import { FreezeFrameController } from '../FreezeFrame/FreezeFrameController';
 import { AFKController } from '../AFK/AFKController';
 import { DataChannelController } from '../DataChannel/DataChannelController';
 import { PeerConnectionController } from '../PeerConnectionController/PeerConnectionController';
@@ -40,8 +39,6 @@ import {
     DataChannelCloseEvent,
     DataChannelErrorEvent,
     DataChannelOpenEvent,
-    HideFreezeFrameEvent,
-    LoadFreezeFrameEvent,
     PlayStreamErrorEvent,
     PlayStreamEvent,
     PlayStreamRejectedEvent,
@@ -78,8 +75,6 @@ export class WebRtcPlayerController {
     streamController: StreamController;
     peerConnectionController: PeerConnectionController;
     inputClassesFactory: InputClassesFactory;
-    freezeFrameController: FreezeFrameController;
-    shouldShowPlayOverlay = true;
     afkController: AFKController;
     latencyStartTime: number;
     pixelStreaming: PixelStreaming;
@@ -137,8 +132,6 @@ export class WebRtcPlayerController {
             this.closeSignalingServer('You have been disconnected due to inactivity.', false);
         };
 
-        this.freezeFrameController = new FreezeFrameController(this.pixelStreaming.videoElementParent);
-
         this.videoPlayer = new VideoPlayer(this.pixelStreaming.videoElementParent, this.config);
         this.videoPlayer.onVideoInitialized = () => this.handleVideoInitialized();
 
@@ -152,9 +145,9 @@ export class WebRtcPlayerController {
             this.streamMessageController.toStreamerHandlers.get('Command')([JSON.stringify(descriptor)]);
         };
 
-        // Every time video player is resized in browser we need to reinitialize the mouse coordinate conversion and freeze frame sizing logic.
+        // Every time video player is resized in browser we need to reinitialize the mouse coordinate conversion..
         this.videoPlayer.onResizePlayerCallback = () => {
-            this.setUpMouseAndFreezeFrame();
+            this.setUpMouseCoordinateConversion();
         };
 
         this.streamController = new StreamController(this.videoPlayer);
@@ -391,16 +384,6 @@ export class WebRtcPlayerController {
             (data: ArrayBuffer) => {
                 this.onCommand(data);
             }
-        );
-        this.streamMessageController.registerMessageHandler(
-            MessageDirection.FromStreamer,
-            'FreezeFrame',
-            (data: ArrayBuffer) => this.onFreezeFrameMessage(data)
-        );
-        this.streamMessageController.registerMessageHandler(
-            MessageDirection.FromStreamer,
-            'UnfreezeFrame',
-            () => this.invalidateFreezeFrameAndEnableVideo()
         );
         this.streamMessageController.registerMessageHandler(
             MessageDirection.FromStreamer,
@@ -887,55 +870,6 @@ export class WebRtcPlayerController {
     }
 
     /**
-     * Loads a freeze frame if it is required otherwise shows the play overlay
-     */
-    loadFreezeFrameOrShowPlayOverlay() {
-        this.pixelStreaming.dispatchEvent(
-            new LoadFreezeFrameEvent({
-                shouldShowPlayOverlay: this.shouldShowPlayOverlay,
-                isValid: this.freezeFrameController.valid,
-                jpegData: this.freezeFrameController.jpeg
-            })
-        );
-        if (this.shouldShowPlayOverlay === true) {
-            Logger.Info('showing play overlay');
-            this.resizePlayerStyle();
-        } else {
-            Logger.Info('showing freeze frame');
-            this.freezeFrameController.showFreezeFrame();
-        }
-        setTimeout(() => {
-            this.videoPlayer.setVideoEnabled(false);
-        }, this.freezeFrameController.freezeFrameDelay);
-    }
-
-    /**
-     * Process the freeze frame and load it
-     * @param message The freeze frame data in bytes
-     */
-    onFreezeFrameMessage(message: ArrayBuffer) {
-        Logger.Info('DataChannelReceiveMessageType.FreezeFrame');
-        const view = new Uint8Array(message);
-        this.freezeFrameController.processFreezeFrameMessage(view, () =>
-            this.loadFreezeFrameOrShowPlayOverlay()
-        );
-    }
-
-    /**
-     * Enable the video after hiding a freeze frame
-     */
-    invalidateFreezeFrameAndEnableVideo() {
-        Logger.Info('DataChannelReceiveMessageType.FreezeFrame');
-        setTimeout(() => {
-            this.pixelStreaming.dispatchEvent(new HideFreezeFrameEvent());
-            this.freezeFrameController.hideFreezeFrame();
-        }, this.freezeFrameController.freezeFrameDelay);
-        if (this.videoPlayer.getVideoElement()) {
-            this.videoPlayer.setVideoEnabled(true);
-        }
-    }
-
-    /**
      * Prep datachannel data for processing file extension
      * @param data the file extension data
      */
@@ -986,9 +920,6 @@ export class WebRtcPlayerController {
         this.pixelStreaming.dispatchEvent(new PlayStreamEvent());
 
         this.playVideo();
-
-        this.shouldShowPlayOverlay = false;
-        this.freezeFrameController.showFreezeFrame();
     }
 
     /**
@@ -1562,9 +1493,9 @@ export class WebRtcPlayerController {
     }
 
     /**
-     * Set the freeze frame overlay to the player div
+     * Reconfigure mouse coordinate conversion to the player div
      */
-    setUpMouseAndFreezeFrame() {
+    setUpMouseCoordinateConversion() {
         // Calculating and normalizing positions depends on the width and height of the player.
         const playerElement = this.videoPlayer.getVideoParentElement();
         const videoElement = this.videoPlayer.getVideoElement();
@@ -1572,7 +1503,6 @@ export class WebRtcPlayerController {
             { width: playerElement.clientWidth, height: playerElement.clientHeight },
             { width: videoElement.videoWidth, height: videoElement.videoHeight }
         );
-        this.freezeFrameController.freezeFrame.resize();
     }
 
     /**

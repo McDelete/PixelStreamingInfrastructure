@@ -183,8 +183,6 @@ export const DataProtocol = {
         QualityControlOwnership: { id: 0, structure: [] },
         Response: { id: 1, structure: [] },
         Command: { id: 2, structure: [] },
-        FreezeFrame: { id: 3, structure: [] },
-        UnfreezeFrame: { id: 4, structure: [] },
         VideoEncoderAvgQP: { id: 5, structure: [{ name: 'value', type: 'only_string' }] },
         LatencyTest: { id: 6, structure: [] },
         InitialSettings: { id: 7, structure: [{ name: 'value', type: 'only_string' }] },

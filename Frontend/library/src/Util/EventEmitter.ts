@@ -322,35 +322,6 @@ export class PlayStreamRejectedEvent extends Event {
 }
 
 /**
- * An event that is emitted when receiving a full FreezeFrame image from UE.
- */
-export class LoadFreezeFrameEvent extends Event {
-    override readonly type: 'loadFreezeFrame';
-    readonly data: {
-        /** true if should show click-to-play overlay, not the freeze frame contents */
-        shouldShowPlayOverlay: boolean;
-        /** true if the received image is valid */
-        isValid: boolean;
-        /** Image data. Can be e.g. displayed by encoding as a data url. */
-        jpegData?: Uint8Array;
-    };
-    constructor(data: LoadFreezeFrameEvent['data']) {
-        super('loadFreezeFrame');
-        this.data = data;
-    }
-}
-
-/**
- * An event that is emitted when receiving UnfreezeFrame message from UE and video playback is about to be resumed.
- */
-export class HideFreezeFrameEvent extends Event {
-    override readonly type: 'hideFreezeFrame';
-    constructor() {
-        super('hideFreezeFrame');
-    }
-}
-
-/**
  * An event that is emitted when receiving WebRTC statistics.
  */
 export class StatsReceivedEvent extends Event {
@@ -642,8 +613,6 @@ export type PixelStreamingEvent =
     | PlayStreamErrorEvent
     | PlayStreamEvent
     | PlayStreamRejectedEvent
-    | LoadFreezeFrameEvent
-    | HideFreezeFrameEvent
     | StatsReceivedEvent
     | StreamerListMessageEvent
     | StreamerIDChangedMessageEvent

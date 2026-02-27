@@ -348,9 +348,6 @@ export class Application {
         this.stream.addEventListener('playStreamRejected', ({ data: { reason } }) =>
             this.onPlayStreamRejected(reason)
         );
-        this.stream.addEventListener('loadFreezeFrame', ({ data: { shouldShowPlayOverlay } }) =>
-            this.onLoadFreezeFrame(shouldShowPlayOverlay)
-        );
         this.stream.addEventListener('statsReceived', ({ data: { aggregatedStats } }) =>
             this.onStatsReceived(aggregatedStats)
         );
@@ -648,13 +645,6 @@ export class Application {
      */
     onWebRtcFailed() {
         this.showErrorOverlay('Unable to setup video');
-    }
-
-    onLoadFreezeFrame(shouldShowPlayOverlay: boolean) {
-        if (shouldShowPlayOverlay === true) {
-            Logger.Info('showing play overlay');
-            this.showPlayOverlay();
-        }
     }
 
     onPlayStream() {
