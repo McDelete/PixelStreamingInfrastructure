@@ -216,10 +216,29 @@ set WEBPACK_OUTPUT_PATH=%FRONTEND_DIR%
 
 IF NOT exist "%FRONTEND_DIR%" (
     set BUILD_FRONTEND=1
+    set BUILD_FRONTEND_REASON=frontend output missing
+)
+
+IF NOT "%BUILD_FRONTEND%"=="1" (
+    IF NOT exist "%FRONTEND_DIR%\index.html" (
+        set BUILD_FRONTEND=1
+        set BUILD_FRONTEND_REASON=frontend index missing
+    )
+)
+
+IF NOT "%BUILD_FRONTEND%"=="1" (
+    powershell -NoProfile -Command "$src = Get-ChildItem -Path @('Frontend/library/src','Frontend/ui-library/src','Frontend/implementations/typescript/src') -Recurse -File | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1; $out = Get-ChildItem -Path '%FRONTEND_DIR%' -Include *.js,*.html -Recurse -File | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1; if ($null -eq $out -or $src.LastWriteTimeUtc -gt $out.LastWriteTimeUtc) { exit 1 } else { exit 0 }"
+    IF errorlevel 1 (
+        set BUILD_FRONTEND=1
+        set BUILD_FRONTEND_REASON=frontend source changed
+    )
 )
 
 
 IF "%BUILD_FRONTEND%"=="1" (
+    IF NOT "%BUILD_FRONTEND_REASON%"=="" (
+        echo Frontend rebuild reason: %BUILD_FRONTEND_REASON%
+    )
     rem We could replace this all with a single npm script that does all this. we do have several build-all scripts already
     rem but this does give a good reference about the dependency chain for all of this.
     echo Building Typescript frontend...
@@ -329,13 +348,38 @@ exit /b
 :BuildWilbur
 IF NOT exist "%SCRIPT_DIR%..\..\dist" (
     set BUILD_WILBUR=1
+    set BUILD_WILBUR_REASON=wilbur dist missing
+)
+
+IF NOT "%BUILD_WILBUR%"=="1" (
+    IF NOT exist "%SCRIPT_DIR%..\..\dist\index.js" (
+        set BUILD_WILBUR=1
+        set BUILD_WILBUR_REASON=wilbur output missing
+    )
+)
+
+IF NOT "%BUILD_WILBUR%"=="1" (
+    pushd %SCRIPT_DIR%\..\..\
+    powershell -NoProfile -Command "$src = Get-ChildItem -Path 'src' -Filter *.ts -Recurse -File | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1; $dist = Get-Item -Path 'dist/index.js'; if ($src.LastWriteTimeUtc -gt $dist.LastWriteTimeUtc) { exit 1 } else { exit 0 }"
+    IF errorlevel 1 (
+        set BUILD_WILBUR=1
+        set BUILD_WILBUR_REASON=wilbur source changed
+    )
+    popd
 )
 
 IF "%BUILD_WILBUR%"=="1" (
     pushd %SCRIPT_DIR%\..\..\
+    IF NOT "%BUILD_WILBUR_REASON%"=="" (
+        echo Wilbur rebuild reason: %BUILD_WILBUR_REASON%
+    )
     echo Building wilbur...
     call %NPM% run build
     popd
+)
+
+IF NOT "%BUILD_WILBUR%"=="1" (
+    echo Using existing wilbur dist.
 )
 exit /b
 
