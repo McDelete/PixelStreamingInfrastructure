@@ -7,7 +7,7 @@
 	"sfu_port": "8889",
 	"serve": true,
 	"http_root": "D:\\PixelStreamingInfrastructure\\SignallingWebServer\\www",
-	"homepage": "player.html",
+	"homepage": "uiless.html",
 	"https": false,
 	"https_port": 443,
 	"ssl_key_path": "certificates/client-key.pem",

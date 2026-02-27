@@ -2,13 +2,8 @@
 
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const webpack = require('webpack');
-const fs = require('fs');
 
-const pages = fs.readdirSync('./src', { withFileTypes: true })
-	.filter(item => !item.isDirectory())
-	.filter(item => path.parse(item.name).ext === '.html')
-	.map(htmlFile => path.parse(htmlFile.name).name);
+const pages = ['uiless'];
 
 module.exports = {
 	entry: pages.reduce((config, page) => {
@@ -16,12 +11,12 @@ module.exports = {
 		return config;
 	}, {}),
 
-    plugins: [].concat(pages.map((page) => new HtmlWebpackPlugin({
+    plugins: pages.map((page) => new HtmlWebpackPlugin({
           title: `${page}`,
           template: `./src/${page}.html`,
           filename: `${page}.html`,
           chunks: [page],
-    }), )),
+    })),
 
     module: {
       rules: [
@@ -32,7 +27,7 @@ module.exports = {
             /node_modules/,
           ],
           options: {
-            configFile: "tsconfig.esm.json"
+            configFile: 'tsconfig.esm.json'
           }
         },
         {
@@ -75,4 +70,4 @@ module.exports = {
     		directory: path.join(__dirname, '../../../SignallingWebServer/www'),
     	},
     },
-}
+};

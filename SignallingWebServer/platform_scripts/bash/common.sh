@@ -224,7 +224,7 @@ function setup_frontend() {
 	# navigate to root
 	pushd "${SCRIPT_DIR}/../../.." > /dev/null
 
-	# If player.html doesn't exist, or --build passed as arg, rebuild the frontend
+	# If uiless.html doesn't exist, or --build passed as arg, rebuild the frontend
     echo Testing ${WEBPACK_OUTPUT_PATH}
 	if [ ! -d "${WEBPACK_OUTPUT_PATH}" ] || [ "$BUILD_FRONTEND" == "1" ] ; then
 		echo "Building Typescript Frontend."

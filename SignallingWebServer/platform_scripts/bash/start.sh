@@ -18,6 +18,10 @@ for arg in "${TEST_ARGS[@]}"; do
     fi
 done
 
+if [[ "${SERVER_ARGS}" != *"--homepage"* ]]; then
+    SERVER_ARGS+=" --homepage=uiless.html"
+fi
+
 SERVER_ARGS+=" --serve --https_redirect --console_messages verbose --log_config --public_ip=${PUBLIC_IP}"
 if [[ $SKIP_PEER_ARGS == false ]]; then
     if [[ ! -z "$STUN_SERVER" && ! -z "$TURN_SERVER" ]]; then

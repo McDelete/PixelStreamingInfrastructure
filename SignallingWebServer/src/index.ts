@@ -111,7 +111,7 @@ program
     .option(
         '--homepage <filename>',
         'The default html file to serve on the web server.',
-        config_file.homepage || 'player.html'
+        config_file.homepage || 'uiless.html'
     )
     .option('--https', 'Enables the webserver on https_port and enabling SSL', config_file.https || false)
     .addOption(

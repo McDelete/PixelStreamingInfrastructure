@@ -52,7 +52,7 @@ Options:
   --max_players <number>        Sets the maximum number of subscribers per streamer. 0 = unlimited (default: "0")
   --serve                       Enables the webserver on player_port. (default: true)
   --http_root <path>            Sets the path for the webserver root. (default: "D:\\PixelStreamingInfrastructure\\SignallingWebServer\\www")
-  --homepage <filename>         The default html file to serve on the web server. (default: "player.html")
+  --homepage <filename>         The default html file to serve on the web server. (default: "uiless.html")
   --https                       Enables the webserver on https_port and enabling SSL (default: false)
   --https_port <port>           Sets the listen port for the https server. (default: 443)
   --ssl_key_path <path>         Sets the path for the SSL key file. (default: "certificates/client-key.pem")
@@ -76,14 +76,14 @@ These CLI options can also be described in a `config.json` (default config file 
 	"sfu_port": "8889",
 	"serve": true,
 	"http_root": "www",
-	"homepage": "player.html",
+	"homepage": "uiless.html",
 	"log_config": false,
 	"stdin": false
 }
 ```
 Given these options, to start the server with the closest behaviour as the old cirrus, you would invoke,
 ```
-npm start -- --console_messages --https_redirect verbose --serve --log_config --http_root www --homepage player.html
+npm start -- --console_messages --https_redirect verbose --serve --log_config --http_root www --homepage uiless.html
 ```
 Note that `www` being used as the http root assumes your Frontend is in that directory.
 

@@ -6,17 +6,17 @@ const path = require('path');
 module.exports = {
     mode: 'development',
     devtool: 'inline-source-map',
-	entry: './src/player.ts',
+	entry: './src/uiless.ts',
 	plugins: [
 		new HtmlWebpackPlugin({
 				title: `Pixel Streaming ES Module`,
 				scriptLoading: 'module',
-				template: `./src/player.html`,
-				filename: `player_esm.html`
+				template: `./src/uiless.html`,
+				filename: `uiless_esm.html`
 		}),
 	],
 	output: {
-		filename: 'player.esm.js',
+		filename: 'uiless.esm.js',
 		libraryTarget: 'module',
 		module: true,
 		path: process.env.WEBPACK_OUTPUT_PATH ? path.resolve(process.env.WEBPACK_OUTPUT_PATH) : path.resolve(__dirname, '../../../SignallingWebServer/www'),
