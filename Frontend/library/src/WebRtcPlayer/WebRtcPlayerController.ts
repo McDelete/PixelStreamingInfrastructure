@@ -123,7 +123,7 @@ export class WebRtcPlayerController {
         this.file = new FileTemplate();
 
         this.sdpConstraints = {
-            offerToReceiveAudio: true,
+            offerToReceiveAudio: false,
             offerToReceiveVideo: true
         };
 
@@ -985,33 +985,7 @@ export class WebRtcPlayerController {
         this.setTouchInputEnabled(this.config.isFlagEnabled(Flags.TouchInput));
         this.pixelStreaming.dispatchEvent(new PlayStreamEvent());
 
-        if (this.streamController.audioElement.srcObject) {
-            const startMuted = this.config.isFlagEnabled(Flags.StartVideoMuted);
-            this.streamController.audioElement.muted = startMuted;
-
-            if (startMuted) {
-                this.playVideo();
-            } else {
-                this.streamController.audioElement
-                    .play()
-                    .then(() => {
-                        this.playVideo();
-                    })
-                    .catch((onRejectedReason) => {
-                        Logger.Info(onRejectedReason);
-                        Logger.Info(
-                            'Browser does not support autoplaying video without interaction - to resolve this we are going to show the play button overlay.'
-                        );
-                        this.pixelStreaming.dispatchEvent(
-                            new PlayStreamRejectedEvent({
-                                reason: onRejectedReason
-                            })
-                        );
-                    });
-            }
-        } else {
-            this.playVideo();
-        }
+        this.playVideo();
 
         this.shouldShowPlayOverlay = false;
         this.freezeFrameController.showFreezeFrame();
@@ -1023,9 +997,6 @@ export class WebRtcPlayerController {
     private playVideo() {
         // handle play() with promise as it is an asynchronous call
         this.videoPlayer.play().catch((onRejectedReason: string) => {
-            if (this.streamController.audioElement.srcObject) {
-                this.streamController.audioElement.pause();
-            }
             Logger.Info(onRejectedReason);
             Logger.Info(
                 'Browser does not support autoplaying video without interaction - to resolve this we are going to show the play button overlay.'

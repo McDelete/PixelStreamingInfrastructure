@@ -21,7 +21,6 @@ export class PeerConnectionController {
     preferredCodec: string;
     updateCodecSelection: boolean;
     videoTrack: MediaStreamTrack;
-    audioTrack: MediaStreamTrack;
     latencyCalculator: LatencyCalculator;
 
     /**
@@ -65,25 +64,20 @@ export class PeerConnectionController {
 
         const isLocalhostConnection = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
         const isHttpsConnection = location.protocol === 'https:';
-        let useMic = config.isFlagEnabled(Flags.UseMic);
         let useCamera = config.isFlagEnabled(Flags.UseCamera);
-        if ((useMic || useCamera) && !(isLocalhostConnection || isHttpsConnection)) {
-            useMic = false;
+        if (useCamera && !(isLocalhostConnection || isHttpsConnection)) {
             useCamera = false;
             Logger.Error(
-                'Microphone and Webcam access in the browser will not work if you are not on HTTPS or localhost. Disabling mic and webcam access.'
-            );
-            Logger.Error(
-                "For testing you can enable HTTP microphone access Chrome by visiting chrome://flags/ and enabling 'unsafely-treat-insecure-origin-as-secure'"
+                'Webcam access in the browser will not work if you are not on HTTPS or localhost. Disabling webcam access.'
             );
         }
 
-        this.setupTransceiversAsync(useMic, useCamera).finally(() => {
+        this.setupTransceiversAsync(useCamera).finally(() => {
             this.peerConnection
                 ?.createOffer(offerOptions)
                 .then((offer: RTCSessionDescriptionInit) => {
                     this.showTextOverlayConnecting();
-                    offer.sdp = this.mungeSDP(offer.sdp, useMic);
+                    offer.sdp = this.mungeSDP(offer.sdp);
                     this.peerConnection?.setLocalDescription(offer);
                     this.onSendWebRTCOffer(offer);
                 })
@@ -117,16 +111,11 @@ export class PeerConnectionController {
             const isLocalhostConnection =
                 location.hostname === 'localhost' || location.hostname === '127.0.0.1';
             const isHttpsConnection = location.protocol === 'https:';
-            let useMic = config.isFlagEnabled(Flags.UseMic);
             let useCamera = config.isFlagEnabled(Flags.UseCamera);
-            if ((useMic || useCamera) && !(isLocalhostConnection || isHttpsConnection)) {
-                useMic = false;
+            if (useCamera && !(isLocalhostConnection || isHttpsConnection)) {
                 useCamera = false;
                 Logger.Error(
-                    'Microphone and Webcam access in the browser will not work if you are not on HTTPS or localhost. Disabling mic and webcam access.'
-                );
-                Logger.Error(
-                    "For testing you can enable HTTP microphone access Chrome by visiting chrome://flags/ and enabling 'unsafely-treat-insecure-origin-as-secure'"
+                    'Webcam access in the browser will not work if you are not on HTTPS or localhost. Disabling webcam access.'
                 );
             }
 
@@ -136,11 +125,11 @@ export class PeerConnectionController {
                 this.fuzzyIntersectUEAndBrowserCodecs(offer)
             );
 
-            this.setupTransceiversAsync(useMic, useCamera).finally(() => {
+            this.setupTransceiversAsync(useCamera).finally(() => {
                 this.peerConnection
                     ?.createAnswer()
                     .then((Answer: RTCSessionDescriptionInit) => {
-                        Answer.sdp = this.mungeSDP(Answer.sdp, useMic);
+                        Answer.sdp = this.mungeSDP(Answer.sdp);
                         return this.peerConnection?.setLocalDescription(Answer);
                     })
                     .then(() => {
@@ -235,32 +224,13 @@ export class PeerConnectionController {
     /**
      * Modify the Session Descriptor
      * @param sdp - Session Descriptor as a string
-     * @param useMic - Is the microphone in use
      * @returns A modified Session Descriptor
      */
-    mungeSDP(sdp: string, useMic: boolean) {
+    mungeSDP(sdp: string) {
         let mungedSDP = sdp.replace(
             /(a=fmtp:\d+ .*level-asymmetry-allowed=.*)\r\n/gm,
             '$1;x-google-start-bitrate=10000;x-google-max-bitrate=100000\r\n'
         );
-
-        // set max bitrate to highest bitrate Opus supports
-        let audioSDP = 'maxaveragebitrate=510000;';
-
-        if (useMic) {
-            // set the max capture rate to 48khz (so we can send high quality audio from mic)
-            audioSDP += 'sprop-maxcapturerate=48000;';
-        }
-
-        // Force mono or stereo based on whether ?forceMono was passed or not
-        audioSDP += this.config.isFlagEnabled(Flags.ForceMonoAudio) ? 'stereo=0;' : 'stereo=1;';
-
-        // enable in-band forward error correction for opus audio
-        audioSDP += 'useinbandfec=1';
-
-        // We use the line 'useinbandfec=1' (which Opus uses) to set our Opus specific audio parameters.
-        mungedSDP = mungedSDP.replace('useinbandfec=1', audioSDP);
-
         // Add abs-capture-time RTP header extension if we have enabled the setting.
         // Note: As at Feb 2025, Chromium based browsers are the only ones that support this and
         // munging it into the answer in Firefox will cause the connection to fail.
@@ -331,9 +301,6 @@ export class PeerConnectionController {
         }
         if (event.track.kind == 'video') {
             this.videoTrack = event.track;
-        }
-        if (event.track.kind == 'audio') {
-            this.audioTrack = event.track;
         }
         this.onTrack(event);
     }
@@ -426,10 +393,9 @@ export class PeerConnectionController {
 
     /**
      * Setup tracks on the RTC Peer Connection
-     * @param useMic - is mic in use
      * @param useCamera - is webcam in use
      */
-    async setupTransceiversAsync(useMic: boolean, useCamera: boolean) {
+    async setupTransceiversAsync(useCamera: boolean) {
         let hasVideoReceiver = false;
         for (const transceiver of this.peerConnection?.getTransceivers() ?? []) {
             if (
@@ -498,30 +464,6 @@ export class PeerConnectionController {
                 }
             }
         }
-
-        let hasAudioReceiver = false;
-        for (const transceiver of this.peerConnection?.getTransceivers() ?? []) {
-            if (
-                transceiver &&
-                transceiver.receiver &&
-                transceiver.receiver.track &&
-                transceiver.receiver.track.kind === 'audio'
-            ) {
-                hasAudioReceiver = true;
-                break;
-            }
-        }
-
-        // Setup a transceiver for sending mic audio to UE and receiving audio from UE
-        if (!useMic) {
-            if (!hasAudioReceiver) {
-                this.peerConnection?.addTransceiver('audio', {
-                    direction: 'recvonly'
-                });
-            }
-        } else {
-            await this.setupAudioSender(hasAudioReceiver);
-        }
     }
 
     async setupVideoSender(hasVideoReceiver: boolean) {
@@ -557,57 +499,6 @@ export class PeerConnectionController {
         } else {
             if (!hasVideoReceiver) {
                 this.peerConnection?.addTransceiver('video', { direction: 'recvonly' });
-            }
-        }
-    }
-
-    async setupAudioSender(hasAudioReceiver: boolean) {
-        // set the audio options based on mic usage
-        const audioOptions = {
-            autoGainControl: false,
-            channelCount: 1,
-            echoCancellation: false,
-            latency: 0,
-            noiseSuppression: false,
-            sampleRate: 48000,
-            sampleSize: 16,
-            volume: 1.0
-        };
-
-        // set the media send options
-        const mediaSendOptions: MediaStreamConstraints = {
-            video: false,
-            audio: audioOptions
-        };
-
-        // Note using mic on android chrome requires SSL or chrome://flags/ "unsafely-treat-insecure-origin-as-secure"
-        const stream = await navigator.mediaDevices.getUserMedia(mediaSendOptions);
-        if (stream) {
-            if (hasAudioReceiver) {
-                for (const transceiver of this.peerConnection?.getTransceivers() ?? []) {
-                    if (RTCUtils.canTransceiverReceiveAudio(transceiver)) {
-                        for (const track of stream.getTracks()) {
-                            if (track.kind && track.kind == 'audio') {
-                                transceiver.sender.replaceTrack(track);
-                                transceiver.direction = 'sendrecv';
-                            }
-                        }
-                    }
-                }
-            } else {
-                for (const track of stream.getTracks()) {
-                    if (track.kind && track.kind == 'audio') {
-                        this.peerConnection?.addTransceiver(track, {
-                            direction: 'sendrecv'
-                        });
-                    }
-                }
-            }
-        } else {
-            if (!hasAudioReceiver) {
-                this.peerConnection?.addTransceiver('audio', {
-                    direction: 'recvonly'
-                });
             }
         }
     }

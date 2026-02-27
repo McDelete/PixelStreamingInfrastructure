@@ -18,14 +18,12 @@ export class Flags {
     static AutoPlayVideo = 'AutoPlayVideo' as const;
     static AFKDetection = 'TimeoutIfIdle' as const;
     static HoveringMouseMode = 'HoveringMouse' as const;
-    static ForceMonoAudio = 'ForceMonoAudio' as const;
     static ForceTURN = 'ForceTURN' as const;
     static FakeMouseWithTouches = 'FakeMouseWithTouches' as const;
     static IsQualityController = 'ControlsQuality' as const;
     static MatchViewportResolution = 'MatchViewportRes' as const;
     static StartVideoMuted = 'StartVideoMuted' as const;
     static SuppressBrowserKeys = 'SuppressBrowserKeys' as const;
-    static UseMic = 'UseMic' as const;
     static UseModalForTextInput = 'UseModalForTextInput' as const;
     static UseCamera = 'UseCamera' as const;
     static KeyboardInput = 'KeyboardInput' as const;
@@ -320,19 +318,6 @@ export class Config {
         );
 
         this.flags.set(
-            Flags.UseMic,
-            new SettingFlag(
-                Flags.UseMic,
-                'Use microphone',
-                'Make browser request microphone access and open an input audio track.',
-                settings && Object.prototype.hasOwnProperty.call(settings, Flags.UseMic)
-                    ? settings[Flags.UseMic]
-                    : false,
-                useUrlParams
-            )
-        );
-
-        this.flags.set(
             Flags.UseModalForTextInput,
             new SettingFlag(
                 Flags.UseModalForTextInput,
@@ -393,19 +378,6 @@ export class Config {
                 settings && Object.prototype.hasOwnProperty.call(settings, Flags.IsQualityController)
                     ? settings[Flags.IsQualityController]
                     : true,
-                useUrlParams
-            )
-        );
-
-        this.flags.set(
-            Flags.ForceMonoAudio,
-            new SettingFlag(
-                Flags.ForceMonoAudio,
-                'Force mono audio',
-                'Force browser to request mono audio in the SDP',
-                settings && Object.prototype.hasOwnProperty.call(settings, Flags.ForceMonoAudio)
-                    ? settings[Flags.ForceMonoAudio]
-                    : false,
                 useUrlParams
             )
         );

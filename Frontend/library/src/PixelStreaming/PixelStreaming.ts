@@ -337,55 +337,6 @@ export class PixelStreaming {
     }
 
     /**
-     * Will unmute the microphone track which is sent to Unreal Engine.
-     * By default, will only unmute an existing mic track.
-     *
-     * @param forceEnable Can be used for cases when this object wasn't initialized with a mic track.
-     * If this parameter is true, the connection will be restarted with a microphone.
-     * Warning: this takes some time, as a full renegotiation and reconnection will happen.
-     */
-    public unmuteMicrophone(forceEnable = false): void {
-        // If there's an existing mic track, we just set muted state
-        if (this.config.isFlagEnabled('UseMic')) {
-            this.setMicrophoneMuted(false);
-            return;
-        }
-
-        // If there's no pre-existing mic track, and caller is ok with full reset, we enable and reset
-        if (forceEnable) {
-            this.config.setFlagEnabled('UseMic', true);
-            this.reconnect();
-            return;
-        }
-
-        // If we prefer not to force a reconnection, just warn the user that this operation didn't happen
-        Logger.Warning(
-            'Trying to unmute mic, but PixelStreaming was initialized with no microphone track. Call with forceEnable == true to re-connect with a mic track.'
-        );
-    }
-
-    public muteMicrophone(): void {
-        if (this.config.isFlagEnabled('UseMic')) {
-            this.setMicrophoneMuted(true);
-            return;
-        }
-
-        // If there wasn't a mic track, just let user know there's nothing to mute
-        Logger.Info(
-            'Trying to mute mic, but PixelStreaming has no microphone track, so sending sound is already disabled.'
-        );
-    }
-
-    private setMicrophoneMuted(mute: boolean): void {
-        for (const transceiver of this._webRtcController?.peerConnectionController?.peerConnection?.getTransceivers() ??
-            []) {
-            if (RTCUtils.canTransceiverSendAudio(transceiver)) {
-                transceiver.sender.track.enabled = !mute;
-            }
-        }
-    }
-
-    /**
      * Will unmute the video track which is sent to Unreal Engine.
      * By default, will only unmute an existing video track.
      *

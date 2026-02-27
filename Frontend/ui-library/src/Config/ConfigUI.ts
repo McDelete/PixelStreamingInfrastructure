@@ -152,16 +152,12 @@ export class ConfigUI {
                 this.addSettingFlag(psSettingsSection, this.flagsUi.get(Flags.AutoConnect));
             if (isSettingEnabled(settingsConfig, Flags.AutoPlayVideo))
                 this.addSettingFlag(psSettingsSection, this.flagsUi.get(Flags.AutoPlayVideo));
-            if (isSettingEnabled(settingsConfig, Flags.UseMic))
-                this.addSettingFlag(psSettingsSection, this.flagsUi.get(Flags.UseMic));
             if (isSettingEnabled(settingsConfig, Flags.UseCamera))
                 this.addSettingFlag(psSettingsSection, this.flagsUi.get(Flags.UseCamera));
             if (isSettingEnabled(settingsConfig, Flags.StartVideoMuted))
                 this.addSettingFlag(psSettingsSection, this.flagsUi.get(Flags.StartVideoMuted));
             if (isSettingEnabled(settingsConfig, Flags.IsQualityController))
                 this.addSettingFlag(psSettingsSection, this.flagsUi.get(Flags.IsQualityController));
-            if (isSettingEnabled(settingsConfig, Flags.ForceMonoAudio))
-                this.addSettingFlag(psSettingsSection, this.flagsUi.get(Flags.ForceMonoAudio));
             if (isSettingEnabled(settingsConfig, Flags.ForceTURN))
                 this.addSettingFlag(psSettingsSection, this.flagsUi.get(Flags.ForceTURN));
             if (isSettingEnabled(settingsConfig, Flags.SuppressBrowserKeys))
