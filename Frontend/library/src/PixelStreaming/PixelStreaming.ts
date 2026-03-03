@@ -32,7 +32,8 @@ import {
     WebRtcTCPRelayDetectedEvent,
     SubscribeFailedEvent,
     WebRtcSdpOfferEvent,
-    WebRtcSdpAnswerEvent
+    WebRtcSdpAnswerEvent,
+    ActiveVideoStreamChangedEvent
 } from '../Util/EventEmitter';
 import { WebXRController } from '../WebXR/WebXRController';
 import { MessageDirection } from '../UeInstanceMessage/StreamMessageController';
@@ -707,6 +708,28 @@ export class PixelStreaming {
         }
         this._webRtcController.sendIframeRequest();
         return true;
+    }
+
+    public nextVideoStream() {
+        return this._webRtcController.cycleToNextVideoStream();
+    }
+
+    public setActiveVideoStream(index: number) {
+        return this._webRtcController.setActiveVideoStream(index);
+    }
+
+    public getActiveVideoStreamIndex() {
+        return this._webRtcController.getActiveVideoStreamIndex();
+    }
+
+    public getVideoStreamsCount() {
+        return this._webRtcController.getVideoStreamsCount();
+    }
+
+    public _onActiveVideoStreamChanged(activeStreamIndex: number, streamCount: number) {
+        this._eventEmitter.dispatchEvent(
+            new ActiveVideoStreamChangedEvent({ activeStreamIndex, streamCount })
+        );
     }
 
     /**

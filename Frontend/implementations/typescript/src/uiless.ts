@@ -1,6 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-import { Config, PixelStreaming } from '@epicgames-ps/lib-pixelstreamingfrontend-ue5.7';
+import { Config, PixelStreaming, Logger } from '@epicgames-ps/lib-pixelstreamingfrontend-ue5.7';
 
 document.body.onload = function() {
 	const config = new Config({
@@ -16,5 +16,14 @@ document.body.onload = function() {
 		}
 	});
 
-	new PixelStreaming(config, { videoElementParent: document.getElementById('videoParentElement') });
+	const stream = new PixelStreaming(config, { videoElementParent: document.getElementById('videoParentElement') });
+
+	document.addEventListener('keydown', (event: KeyboardEvent) => {
+		if (event.key !== 'z' && event.key !== 'Z') {
+			return;
+		}
+
+		const activeStreamIndex = stream.nextVideoStream();
+		Logger.Info(`Switched to next video stream index=${activeStreamIndex}`);
+	});
 };

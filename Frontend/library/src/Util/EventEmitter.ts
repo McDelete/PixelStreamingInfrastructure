@@ -580,6 +580,19 @@ export class PlayerCountEvent extends Event {
 /**
  * An event that is emitted when the webRTC connections is relayed over TCP.
  */
+
+export class ActiveVideoStreamChangedEvent extends Event {
+    override readonly type: 'activeVideoStreamChanged';
+    readonly data: {
+        activeStreamIndex: number;
+        streamCount: number;
+    };
+    constructor(data: ActiveVideoStreamChangedEvent['data']) {
+        super('activeVideoStreamChanged');
+        this.data = data;
+    }
+}
+
 export class WebRtcTCPRelayDetectedEvent extends Event {
     override readonly type: 'webRtcTCPRelayDetected';
     constructor() {
@@ -627,6 +640,7 @@ export type PixelStreamingEvent =
     | XrSessionEndedEvent
     | XrFrameEvent
     | PlayerCountEvent
+    | ActiveVideoStreamChangedEvent
     | WebRtcTCPRelayDetectedEvent;
 
 export class PixelStreamingEventEmitter extends EventTarget {

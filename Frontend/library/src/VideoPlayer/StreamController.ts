@@ -8,6 +8,8 @@ import { VideoPlayer } from './VideoPlayer';
  */
 export class StreamController {
     videoElementProvider: VideoPlayer;
+    videoStreams: MediaStream[] = [];
+    activeVideoStreamIndex = -1;
 
     /**
      * @param videoElementProvider Video Player instance
@@ -41,10 +43,68 @@ export class StreamController {
             );
         }
 
-        if (rtcTrackEvent.track.kind == 'video' && videoElement.srcObject !== rtcTrackEvent.streams[0]) {
-            videoElement.srcObject = rtcTrackEvent.streams[0];
-            Logger.Info('Set video source from video track ontrack.');
-            return;
+        if (rtcTrackEvent.track.kind == 'video') {
+            // TODO: When UE emits color/depth/other tracks, keep each output as a unique MediaStream id.
+            const stream = rtcTrackEvent.streams[0];
+            const existingIndex = this.videoStreams.findIndex(
+                (existingStream) => existingStream.id === stream.id
+            );
+            if (existingIndex === -1) {
+                this.videoStreams.push(stream);
+                Logger.Info(
+                    `Registered incoming video stream id=${stream.id} index=${this.videoStreams.length - 1}`
+                );
+            }
+
+            if (this.activeVideoStreamIndex === -1) {
+                this.setActiveVideoStreamByIndex(0);
+                Logger.Info('Set video source from first incoming video track ontrack.');
+                return;
+            }
+
+            const activeStream = this.getActiveVideoStream();
+            if (activeStream && videoElement.srcObject !== activeStream) {
+                videoElement.srcObject = activeStream;
+            }
         }
+    }
+
+    setActiveVideoStreamByIndex(index: number): number {
+        if (this.videoStreams.length < 1) {
+            return -1;
+        }
+
+        const normalizedIndex =
+            ((index % this.videoStreams.length) + this.videoStreams.length) % this.videoStreams.length;
+        const stream = this.videoStreams[normalizedIndex];
+        this.videoElementProvider.getVideoElement().srcObject = stream;
+        this.activeVideoStreamIndex = normalizedIndex;
+        Logger.Info(`Active video stream switched to index=${normalizedIndex} id=${stream.id}`);
+        return normalizedIndex;
+    }
+
+    cycleToNextVideoStream(): number {
+        if (this.videoStreams.length < 1) {
+            return -1;
+        }
+
+        const nextIndex = this.activeVideoStreamIndex < 0 ? 0 : this.activeVideoStreamIndex + 1;
+        return this.setActiveVideoStreamByIndex(nextIndex);
+    }
+
+    getVideoStreamsCount(): number {
+        return this.videoStreams.length;
+    }
+
+    getActiveVideoStreamIndex(): number {
+        return this.activeVideoStreamIndex;
+    }
+
+    getActiveVideoStream(): MediaStream | null {
+        if (this.activeVideoStreamIndex < 0 || this.activeVideoStreamIndex >= this.videoStreams.length) {
+            return null;
+        }
+
+        return this.videoStreams[this.activeVideoStreamIndex];
     }
 }

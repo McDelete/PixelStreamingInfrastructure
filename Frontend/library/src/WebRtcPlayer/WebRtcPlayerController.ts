@@ -44,7 +44,8 @@ import {
     PlayStreamRejectedEvent,
     ShowOnScreenKeyboardEvent,
     StreamerListMessageEvent,
-    StreamerIDChangedMessageEvent
+    StreamerIDChangedMessageEvent,
+    ActiveVideoStreamChangedEvent
 } from '../Util/EventEmitter';
 import {
     DataChannelLatencyTestRequest,
@@ -1708,6 +1709,46 @@ export class WebRtcPlayerController {
     sendIframeRequest(): void {
         Logger.Info('----   Sending Request for an IFrame  ----');
         this.streamMessageController.toStreamerHandlers.get('IFrameRequest')();
+    }
+
+    cycleToNextVideoStream(): number {
+        const activeStreamIndex = this.streamController.cycleToNextVideoStream();
+        if (activeStreamIndex === -1) {
+            return -1;
+        }
+
+        this.pixelStreaming.dispatchEvent(
+            new ActiveVideoStreamChangedEvent({
+                activeStreamIndex,
+                streamCount: this.streamController.getVideoStreamsCount()
+            })
+        );
+
+        return activeStreamIndex;
+    }
+
+    setActiveVideoStream(index: number): number {
+        const activeStreamIndex = this.streamController.setActiveVideoStreamByIndex(index);
+        if (activeStreamIndex === -1) {
+            return -1;
+        }
+
+        this.pixelStreaming.dispatchEvent(
+            new ActiveVideoStreamChangedEvent({
+                activeStreamIndex,
+                streamCount: this.streamController.getVideoStreamsCount()
+            })
+        );
+
+        return activeStreamIndex;
+    }
+
+    getActiveVideoStreamIndex(): number {
+        return this.streamController.getActiveVideoStreamIndex();
+    }
+
+    getVideoStreamsCount(): number {
+        return this.streamController.getVideoStreamsCount();
     }
 
     /**
