@@ -364,11 +364,29 @@ function start_process() {
 # Assumes the following are set
 # SCRIPT_DIR = The path to the platform_scripts
 function build_wilbur() {
-    if [ ! -d "${SCRIPT_DIR}/../../dist" ] || [ "$BUILD_WILBUR" == "1" ] ; then
+    local wilbur_dir="${SCRIPT_DIR}/../.."
+    local wilbur_dist="${wilbur_dir}/dist"
+    local wilbur_entry="${wilbur_dist}/index.js"
+    local wilbur_stamp="${wilbur_dir}/.buildcache/wilbur.lastbuild"
+    local needs_build=0
+
+    if [ "$BUILD_WILBUR" == "1" ] || [ ! -f "${wilbur_entry}" ] || [ ! -f "${wilbur_stamp}" ]; then
+        needs_build=1
+    elif find "${wilbur_dir}/src" -type f -newer "${wilbur_stamp}" | read; then
+        needs_build=1
+    elif [ "${wilbur_dir}/package.json" -nt "${wilbur_stamp}" ] || [ "${wilbur_dir}/package-lock.json" -nt "${wilbur_stamp}" ] || [ "${wilbur_dir}/tsconfig.json" -nt "${wilbur_stamp}" ]; then
+        needs_build=1
+    fi
+
+    if [ "$needs_build" == "1" ] ; then
         pushd "${SCRIPT_DIR}/../.." > /dev/null
         echo Building wilbur
         npm run build
+        mkdir -p .buildcache
+        touch .buildcache/wilbur.lastbuild
         popd > /dev/null
+    else
+        echo "Skipping wilbur build (no source changes)."
     fi
 }
 
