@@ -8,7 +8,15 @@ export { SettingFlag } from './Config/SettingFlag';
 export { SettingNumber } from './Config/SettingNumber';
 export { SettingOption } from './Config/SettingOption';
 export { SettingText } from './Config/SettingText';
-export { PixelStreaming, PixelStreamingOverrides } from './PixelStreaming/PixelStreaming';
+export {
+    PixelStreaming,
+    PixelStreamingOverrides,
+    PixelStreamingApiInteraction,
+    PixelStreamingAddLightPayload,
+    PixelStreamingMoveLightPayload,
+    PixelStreamingRemoveLightPayload,
+    PixelStreamingLightPosition
+} from './PixelStreaming/PixelStreaming';
 export { AFKController as AfkLogic } from './AFK/AFKController';
 export { LatencyTestResults } from './DataChannel/LatencyTestResults';
 export * from './DataChannel/InitialSettings';

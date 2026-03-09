@@ -56,6 +56,36 @@ export interface PixelStreamingOverrides {
     videoElementParent?: HTMLElement;
 }
 
+export interface PixelStreamingLightPosition {
+    x: number;
+    y: number;
+    z: number;
+}
+
+export interface PixelStreamingAddLightPayload {
+    id: string;
+    position: PixelStreamingLightPosition;
+    intensity?: number;
+    color?: string;
+    [key: string]: unknown;
+}
+
+export interface PixelStreamingMoveLightPayload {
+    id: string;
+    position: PixelStreamingLightPosition;
+    [key: string]: unknown;
+}
+
+export interface PixelStreamingRemoveLightPayload {
+    id: string;
+    [key: string]: unknown;
+}
+
+export interface PixelStreamingApiInteraction {
+    type: string;
+    payload?: Record<string, unknown>;
+}
+
 /**
  * The key class for the browser side of a Pixel Streaming application, it includes:
  * WebRTC handling, XR support, input handling, and emitters for lifetime and state change events.
@@ -720,6 +750,22 @@ export class PixelStreaming {
         }
         this._webRtcController.emitUIInteraction(descriptor);
         return true;
+    }
+
+    public emitApiInteraction(type: string, payload: Record<string, unknown> = {}) {
+        return this.emitUIInteraction({ type, payload } as PixelStreamingApiInteraction);
+    }
+
+    public addLight(payload: PixelStreamingAddLightPayload) {
+        return this.emitApiInteraction('add_light', payload);
+    }
+
+    public moveLight(payload: PixelStreamingMoveLightPayload) {
+        return this.emitApiInteraction('move_light', payload);
+    }
+
+    public removeLight(payload: PixelStreamingRemoveLightPayload) {
+        return this.emitApiInteraction('remove_light', payload);
     }
 
     /**

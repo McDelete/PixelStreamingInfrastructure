@@ -13,6 +13,15 @@ import { InitialSettings } from '../DataChannel/InitialSettings';
 
 const flushPromises = () => new Promise(jest.requireActual("timers").setImmediate);
 
+const decodeDataChannelStringMessage = (message: ArrayBuffer): string => {
+    const view = new DataView(message);
+    let decoded = '';
+    for (let i = 1; i < view.byteLength; i += 2) {
+        decoded += String.fromCharCode(view.getUint16(i, true));
+    }
+    return decoded;
+};
+
 describe('PixelStreaming', () => {
     let webSocketSpyFunctions: MockWebSocketSpyFunctions;
     let webSocketTriggerFunctions: MockWebSocketTriggerFunctions;
@@ -536,6 +545,94 @@ describe('PixelStreaming', () => {
         
         expect(commandSent).toEqual(true);
         expect(rtcPeerConnectionSpyFunctions.sendDataSpy).toHaveBeenCalled();
+    });
+
+    it('should send typed API interactions through UIInteraction', () => {
+        mockHTMLMediaElement({ ableToPlay: true, readyState: 2 });
+
+        const config = new Config({ initialSettings: {ss: mockSignallingUrl}});
+        const pixelStreaming = new PixelStreaming(config);
+        pixelStreaming.connect();
+
+        establishMockedPixelStreamingConnection();
+
+        pixelStreaming.play();
+
+        const commandSent = pixelStreaming.emitApiInteraction('add_light', {
+            id: 'light-1',
+            position: { x: 100, y: 200, z: 300 }
+        });
+
+        expect(commandSent).toEqual(true);
+        expect(rtcPeerConnectionSpyFunctions.sendDataSpy).toHaveBeenCalled();
+
+        const payload = decodeDataChannelStringMessage(
+            (rtcPeerConnectionSpyFunctions.sendDataSpy as jest.Mock).mock.calls.at(-1)[0]
+        );
+        expect(JSON.parse(payload)).toEqual({
+            type: 'add_light',
+            payload: {
+                id: 'light-1',
+                position: { x: 100, y: 200, z: 300 }
+            }
+        });
+    });
+
+    it('should provide addLight/moveLight/removeLight convenience helpers', () => {
+        mockHTMLMediaElement({ ableToPlay: true, readyState: 2 });
+
+        const config = new Config({ initialSettings: {ss: mockSignallingUrl}});
+        const pixelStreaming = new PixelStreaming(config);
+        pixelStreaming.connect();
+
+        establishMockedPixelStreamingConnection();
+
+        pixelStreaming.play();
+
+        const added = pixelStreaming.addLight({
+            id: 'light-1',
+            position: { x: 0, y: 0, z: 0 },
+            intensity: 5000
+        });
+        const moved = pixelStreaming.moveLight({
+            id: 'light-1',
+            position: { x: 10, y: 20, z: 30 }
+        });
+        const removed = pixelStreaming.removeLight({
+            id: 'light-1'
+        });
+
+        expect(added).toEqual(true);
+        expect(moved).toEqual(true);
+        expect(removed).toEqual(true);
+
+        const sentPayloads = (rtcPeerConnectionSpyFunctions.sendDataSpy as jest.Mock).mock.calls
+            .slice(-3)
+            .map((call) => JSON.parse(decodeDataChannelStringMessage(call[0])));
+
+        expect(sentPayloads).toEqual([
+            {
+                type: 'add_light',
+                payload: {
+                    id: 'light-1',
+                    position: { x: 0, y: 0, z: 0 },
+                    intensity: 5000
+                }
+            },
+            {
+                type: 'move_light',
+                payload: {
+                    id: 'light-1',
+                    position: { x: 10, y: 20, z: 30 }
+                }
+            },
+            {
+                type: 'remove_light',
+                payload: {
+                    id: 'light-1'
+                }
+            }
+        ]);
     });
 
     it('should call user-provided callback if receiving a data channel Response message from the streamer', () => {
