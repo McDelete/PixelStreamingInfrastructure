@@ -201,3 +201,28 @@ a[data-toggle="collapse"] {
 .characterBtn:active {
 	box-shadow: var(--democolor5) 0px 0px 0px 3px;
 }
+
+.light-api-input {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 0.35em 0.5em;
+	border-radius: 4px;
+	border: 1px solid var(--democolor6);
+	background-color: var(--democolor0);
+	color: var(--democolor7);
+	margin-bottom: 0.6em;
+}
+
+.light-api-input-small {
+	width: 31%;
+}
+
+#lightApiLog {
+	background-color: var(--democolor0);
+	border: 1px solid var(--democolor6);
+	border-radius: 4px;
+	padding: 0.5em;
+	min-height: 10em;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}

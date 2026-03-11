@@ -82,9 +82,33 @@ export interface PixelStreamingRemoveLightPayload {
 }
 
 export interface PixelStreamingApiInteraction {
+    requestId?: string;
     type: string;
     payload?: Record<string, unknown>;
 }
+
+export interface PixelStreamingApiResponse<TPayload = unknown> {
+    requestId?: string;
+    type?: string;
+    code: number;
+    payload?: TPayload;
+    message?: string;
+    [key: string]: unknown;
+}
+
+export interface PixelStreamingCallOptions {
+    timeoutMs?: number;
+}
+
+export interface PixelStreamingAddLightResponsePayload {
+    instance_id: number;
+}
+
+type PendingApiInteraction = {
+    type: string;
+    resolve: (response: PixelStreamingApiResponse) => void;
+    timeoutHandle: ReturnType<typeof setTimeout>;
+};
 
 /**
  * The key class for the browser side of a Pixel Streaming application, it includes:
@@ -111,6 +135,9 @@ export class PixelStreaming {
     private _inputController: boolean;
 
     private _eventEmitter: PixelStreamingEventEmitter;
+    private _apiInteractionCounter = 0;
+    private _pendingApiInteractions: Map<string, PendingApiInteraction> = new Map();
+    private readonly _defaultApiInteractionTimeoutMs = 15000;
 
     /**
      * @param config - A newly instantiated config object
@@ -140,6 +167,47 @@ export class PixelStreaming {
             // Bind to the stats received event
             this._eventEmitter.addEventListener('statsReceived', this._setupWebRtcTCPRelayDetection);
         });
+
+        this.addResponseEventListener('__pixelstreaming_api_interaction_responses__', (response) => {
+            this._handleApiInteractionResponse(response);
+        });
+    }
+
+    private _nextApiRequestId(type: string): string {
+        this._apiInteractionCounter += 1;
+        return `${type}:${Date.now()}:${this._apiInteractionCounter}`;
+    }
+
+    private _tryParseApiResponse(response: string): PixelStreamingApiResponse | null {
+        try {
+            const parsed = JSON.parse(response) as PixelStreamingApiResponse;
+            if (typeof parsed !== 'object' || parsed === null) {
+                return null;
+            }
+            if (typeof parsed.code !== 'number') {
+                return null;
+            }
+            return parsed;
+        } catch {
+            return null;
+        }
+    }
+
+    private _handleApiInteractionResponse(response: string): void {
+        const parsed = this._tryParseApiResponse(response);
+        if (!parsed || typeof parsed.requestId !== 'string') {
+            return;
+        }
+        const pending = this._pendingApiInteractions.get(parsed.requestId);
+        if (!pending) {
+            return;
+        }
+        clearTimeout(pending.timeoutHandle);
+        this._pendingApiInteractions.delete(parsed.requestId);
+        if (parsed.type == null) {
+            parsed.type = pending.type;
+        }
+        pending.resolve(parsed);
     }
 
     /**
@@ -756,16 +824,58 @@ export class PixelStreaming {
         return this.emitUIInteraction({ type, payload } as PixelStreamingApiInteraction);
     }
 
-    public addLight(payload: PixelStreamingAddLightPayload) {
-        return this.emitApiInteraction('add_light', payload);
+    public callApiInteraction<TPayload = unknown>(
+        type: string,
+        payload: Record<string, unknown> = {},
+        options: PixelStreamingCallOptions = {}
+    ): Promise<PixelStreamingApiResponse<TPayload>> {
+        if (!this._webRtcController.videoPlayer.isVideoReady()) {
+            return Promise.reject(new Error('Video player is not ready'));
+        }
+
+        const requestId = this._nextApiRequestId(type);
+        const timeoutMs = options.timeoutMs ?? this._defaultApiInteractionTimeoutMs;
+
+        return new Promise<PixelStreamingApiResponse<TPayload>>((resolve, reject) => {
+            const timeoutHandle = setTimeout(() => {
+                this._pendingApiInteractions.delete(requestId);
+                reject(new Error(`Timed out waiting for API response for ${type}`));
+            }, timeoutMs);
+
+            this._pendingApiInteractions.set(requestId, {
+                type,
+                resolve: resolve as (response: PixelStreamingApiResponse) => void,
+                timeoutHandle
+            });
+
+            const sent = this.emitUIInteraction({ requestId, type, payload } as PixelStreamingApiInteraction);
+            if (!sent) {
+                clearTimeout(timeoutHandle);
+                this._pendingApiInteractions.delete(requestId);
+                reject(new Error(`Failed to send API interaction for ${type}`));
+            }
+        });
     }
 
-    public moveLight(payload: PixelStreamingMoveLightPayload) {
-        return this.emitApiInteraction('move_light', payload);
+    public addLight(
+        payload: PixelStreamingAddLightPayload,
+        options: PixelStreamingCallOptions = {}
+    ): Promise<PixelStreamingApiResponse<PixelStreamingAddLightResponsePayload>> {
+        return this.callApiInteraction<PixelStreamingAddLightResponsePayload>('add_light', payload, options);
     }
 
-    public removeLight(payload: PixelStreamingRemoveLightPayload) {
-        return this.emitApiInteraction('remove_light', payload);
+    public moveLight(
+        payload: PixelStreamingMoveLightPayload,
+        options: PixelStreamingCallOptions = {}
+    ): Promise<PixelStreamingApiResponse> {
+        return this.callApiInteraction('move_light', payload, options);
+    }
+
+    public removeLight(
+        payload: PixelStreamingRemoveLightPayload,
+        options: PixelStreamingCallOptions = {}
+    ): Promise<PixelStreamingApiResponse> {
+        return this.callApiInteraction('remove_light', payload, options);
     }
 
     /**

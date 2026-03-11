@@ -578,61 +578,130 @@ describe('PixelStreaming', () => {
         });
     });
 
-    it('should provide addLight/moveLight/removeLight convenience helpers', () => {
+    it('should provide addLight/moveLight/removeLight convenience helpers with request and response correlation', async () => {
+        mockHTMLMediaElement({ ableToPlay: true, readyState: 2 });
+
+        const config = new Config({ initialSettings: {ss: mockSignallingUrl}});
+        const pixelStreaming = new PixelStreaming(config);
+        pixelStreaming.connect();
+        const { channel } = establishMockedPixelStreamingConnection();
+
+        pixelStreaming.play();
+
+        const addedPromise = pixelStreaming.addLight({
+            id: 'light-1',
+            position: { x: 0, y: 0, z: 0 },
+            intensity: 5000
+        });
+        const movedPromise = pixelStreaming.moveLight({
+            id: 'light-1',
+            position: { x: 10, y: 20, z: 30 }
+        });
+        const removedPromise = pixelStreaming.removeLight({
+            id: 'light-1'
+        });
+
+        const sentPayloads = (rtcPeerConnectionSpyFunctions.sendDataSpy as jest.Mock).mock.calls
+            .slice(-3)
+            .map((call) => JSON.parse(decodeDataChannelStringMessage(call[0])));
+
+        expect(sentPayloads[0].type).toEqual('add_light');
+        expect(sentPayloads[1].type).toEqual('move_light');
+        expect(sentPayloads[2].type).toEqual('remove_light');
+        expect(sentPayloads[0].requestId).toEqual(expect.any(String));
+        expect(sentPayloads[1].requestId).toEqual(expect.any(String));
+        expect(sentPayloads[2].requestId).toEqual(expect.any(String));
+
+        const responses = [
+            {
+                requestId: sentPayloads[0].requestId,
+                type: 'add_light',
+                code: 201,
+                payload: { instance_id: 42 }
+            },
+            {
+                requestId: sentPayloads[1].requestId,
+                type: 'move_light',
+                code: 200
+            },
+            {
+                requestId: sentPayloads[2].requestId,
+                type: 'remove_light',
+                code: 200
+            }
+        ];
+
+        responses.forEach((response) => {
+            const testMessageContents = JSON.stringify(response);
+            const data = new DataView(new ArrayBuffer(1 + 2 * testMessageContents.length));
+            data.setUint8(0, 1);
+            let byteIdx = 1;
+            for (let i = 0; i < testMessageContents.length; i++) {
+                data.setUint16(byteIdx, testMessageContents.charCodeAt(i), true);
+                byteIdx += 2;
+            }
+            channel.dispatchEvent(new MessageEvent('message', { data: data.buffer }));
+        });
+
+        await expect(addedPromise).resolves.toEqual({
+            requestId: sentPayloads[0].requestId,
+            type: 'add_light',
+            code: 201,
+            payload: { instance_id: 42 }
+        });
+        await expect(movedPromise).resolves.toEqual({
+            requestId: sentPayloads[1].requestId,
+            type: 'move_light',
+            code: 200
+        });
+        await expect(removedPromise).resolves.toEqual({
+            requestId: sentPayloads[2].requestId,
+            type: 'remove_light',
+            code: 200
+        });
+    });
+
+    it('should support generic API call responses for arbitrary functions', async () => {
         mockHTMLMediaElement({ ableToPlay: true, readyState: 2 });
 
         const config = new Config({ initialSettings: {ss: mockSignallingUrl}});
         const pixelStreaming = new PixelStreaming(config);
         pixelStreaming.connect();
 
-        establishMockedPixelStreamingConnection();
+        const { channel } = establishMockedPixelStreamingConnection();
 
         pixelStreaming.play();
 
-        const added = pixelStreaming.addLight({
-            id: 'light-1',
-            position: { x: 0, y: 0, z: 0 },
-            intensity: 5000
-        });
-        const moved = pixelStreaming.moveLight({
-            id: 'light-1',
-            position: { x: 10, y: 20, z: 30 }
-        });
-        const removed = pixelStreaming.removeLight({
-            id: 'light-1'
+        const responsePromise = pixelStreaming.callApiInteraction('spawn_actor', {
+            class: 'BP_TestActor',
+            location: { x: 1, y: 2, z: 3 }
         });
 
-        expect(added).toEqual(true);
-        expect(moved).toEqual(true);
-        expect(removed).toEqual(true);
+        const sentPayload = JSON.parse(
+            decodeDataChannelStringMessage((rtcPeerConnectionSpyFunctions.sendDataSpy as jest.Mock).mock.calls.at(-1)[0])
+        );
 
-        const sentPayloads = (rtcPeerConnectionSpyFunctions.sendDataSpy as jest.Mock).mock.calls
-            .slice(-3)
-            .map((call) => JSON.parse(decodeDataChannelStringMessage(call[0])));
+        const testMessageContents = JSON.stringify({
+            requestId: sentPayload.requestId,
+            type: 'spawn_actor',
+            code: 202,
+            payload: { actor_id: 7 }
+        });
+        const data = new DataView(new ArrayBuffer(1 + 2 * testMessageContents.length));
+        data.setUint8(0, 1);
+        let byteIdx = 1;
+        for (let i = 0; i < testMessageContents.length; i++) {
+            data.setUint16(byteIdx, testMessageContents.charCodeAt(i), true);
+            byteIdx += 2;
+        }
+        channel.dispatchEvent(new MessageEvent('message', { data: data.buffer }));
 
-        expect(sentPayloads).toEqual([
-            {
-                type: 'add_light',
-                payload: {
-                    id: 'light-1',
-                    position: { x: 0, y: 0, z: 0 },
-                    intensity: 5000
-                }
-            },
-            {
-                type: 'move_light',
-                payload: {
-                    id: 'light-1',
-                    position: { x: 10, y: 20, z: 30 }
-                }
-            },
-            {
-                type: 'remove_light',
-                payload: {
-                    id: 'light-1'
-                }
-            }
-        ]);
+        await expect(responsePromise).resolves.toEqual({
+            requestId: sentPayload.requestId,
+            type: 'spawn_actor',
+            code: 202,
+            payload: { actor_id: 7 }
+        });
     });
 
     it('should call user-provided callback if receiving a data channel Response message from the streamer', () => {

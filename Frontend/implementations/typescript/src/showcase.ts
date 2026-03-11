@@ -29,6 +29,8 @@ class Showcase {
 	private _pixelStreaming : PixelStreaming;
 	private _infoElem : HTMLElement;
 	private _exampleSettingsElem : HTMLElement;
+	private _lightApiLogElem : HTMLElement | null = null;
+	private _lastLightId = "light-1";
 
 	constructor (pixelStreaming : PixelStreaming) {
 		this._pixelStreaming = pixelStreaming;
@@ -68,6 +70,9 @@ class Showcase {
 			case "Send Commands to UE":
 				this._createUECommandExample();
 				break;
+			case "Test Light API Calls":
+				this._createLightApiExample();
+				break;
 			default:
 				break;
 		}
@@ -83,6 +88,148 @@ class Showcase {
 
 	private _onResClicked(width : number, height : number) {
 		this._pixelStreaming.emitCommand({ Resolution: { Width: width, Height: height } });
+	}
+
+
+	private _appendLightApiLog(entry : string) {
+		if (!this._lightApiLogElem) { return; }
+		this._lightApiLogElem.textContent = `${new Date().toLocaleTimeString()} - ${entry}\n${this._lightApiLogElem.textContent ?? ""}`;
+	}
+
+	private _readLightForm(formRoot : HTMLElement) {
+		const idInput = formRoot.querySelector<HTMLInputElement>("#lightApiId");
+		const xInput = formRoot.querySelector<HTMLInputElement>("#lightApiX");
+		const yInput = formRoot.querySelector<HTMLInputElement>("#lightApiY");
+		const zInput = formRoot.querySelector<HTMLInputElement>("#lightApiZ");
+		const intensityInput = formRoot.querySelector<HTMLInputElement>("#lightApiIntensity");
+		const id = idInput?.value?.trim() || this._lastLightId;
+		this._lastLightId = id;
+		return {
+			idInput,
+			id,
+			position: {
+				x: Number(xInput?.value ?? 0),
+				y: Number(yInput?.value ?? 0),
+				z: Number(zInput?.value ?? 100)
+			},
+			intensity: Number(intensityInput?.value ?? 5000)
+		};
+	}
+
+	private _createLightApiExample() {
+		this._infoElem.innerHTML =
+		`
+		<p><u>Example: Testing add/move/remove light API calls</u></p>
+		`;
+
+		const wrapper = document.createElement("div");
+		this._exampleSettingsElem.appendChild(wrapper);
+
+		const title = document.createElement("h2");
+		title.innerText = "Light API test panel";
+		wrapper.appendChild(title);
+
+		const idLabel = document.createElement("p");
+		idLabel.innerText = "Light ID";
+		wrapper.appendChild(idLabel);
+
+		const idInput = document.createElement("input");
+		idInput.id = "lightApiId";
+		idInput.classList.add("light-api-input");
+		idInput.value = this._lastLightId;
+		wrapper.appendChild(idInput);
+
+		const posContainer = document.createElement("div");
+		posContainer.classList.add("spaced-row");
+		wrapper.appendChild(posContainer);
+
+		const makeNumberInput = (id: string, value: number) => {
+			const input = document.createElement("input");
+			input.id = id;
+			input.type = "number";
+			input.classList.add("light-api-input", "light-api-input-small");
+			input.value = String(value);
+			posContainer.appendChild(input);
+		};
+
+		makeNumberInput("lightApiX", 0);
+		makeNumberInput("lightApiY", 0);
+		makeNumberInput("lightApiZ", 100);
+
+		const intensityInput = document.createElement("input");
+		intensityInput.id = "lightApiIntensity";
+		intensityInput.type = "number";
+		intensityInput.classList.add("light-api-input");
+		intensityInput.value = "5000";
+		wrapper.appendChild(intensityInput);
+
+		const buttonRow = document.createElement("div");
+		buttonRow.classList.add("spaced-row");
+		wrapper.appendChild(buttonRow);
+
+		const addBtn = document.createElement("button");
+		addBtn.classList.add("btn-flat");
+		addBtn.innerText = "Add Light";
+		addBtn.onclick = async () => {
+			const data = this._readLightForm(wrapper);
+			this._appendLightApiLog(`add_light -> request id=${data.id}`);
+			try {
+				const response = await this._pixelStreaming.addLight({
+					id: data.id,
+					position: data.position,
+					intensity: data.intensity
+				});
+				if (typeof response.payload?.instance_id === "number") {
+					data.idInput.value = String(response.payload.instance_id);
+					this._lastLightId = data.idInput.value;
+				}
+				this._appendLightApiLog(`add_light <- code=${response.code} payload=${JSON.stringify(response.payload ?? {})}`);
+			} catch (error) {
+				this._appendLightApiLog(`add_light <- error=${String(error)}`);
+			}
+		};
+		buttonRow.appendChild(addBtn);
+
+		const moveBtn = document.createElement("button");
+		moveBtn.classList.add("btn-flat");
+		moveBtn.innerText = "Move Light";
+		moveBtn.onclick = async () => {
+			const data = this._readLightForm(wrapper);
+			this._appendLightApiLog(`move_light -> request id=${data.id}`);
+			try {
+				const response = await this._pixelStreaming.moveLight({
+					id: data.id,
+					position: data.position
+				});
+				this._appendLightApiLog(`move_light <- code=${response.code}`);
+			} catch (error) {
+				this._appendLightApiLog(`move_light <- error=${String(error)}`);
+			}
+		};
+		buttonRow.appendChild(moveBtn);
+
+		const removeBtn = document.createElement("button");
+		removeBtn.classList.add("btn-flat");
+		removeBtn.innerText = "Remove Light";
+		removeBtn.onclick = async () => {
+			const data = this._readLightForm(wrapper);
+			this._appendLightApiLog(`remove_light -> request id=${data.id}`);
+			try {
+				const response = await this._pixelStreaming.removeLight({ id: data.id });
+				this._appendLightApiLog(`remove_light <- code=${response.code}`);
+			} catch (error) {
+				this._appendLightApiLog(`remove_light <- error=${String(error)}`);
+			}
+		};
+		buttonRow.appendChild(removeBtn);
+
+		const logTitle = document.createElement("p");
+		logTitle.innerText = "Response log";
+		wrapper.appendChild(logTitle);
+
+		this._lightApiLogElem = document.createElement("pre");
+		this._lightApiLogElem.id = "lightApiLog";
+		wrapper.appendChild(this._lightApiLogElem);
 	}
 
 	private _createGettingStartedExample() {
